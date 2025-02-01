@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Camera App</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background-color: #f4f4f4;
+        }
+        video, canvas {
+            border: 2px solid black;
+            width: 80%;
+            max-width: 500px;
+        }
+        .controls {
+            margin-top: 10px;
+        }
+        button {
+            margin: 5px;
+            padding: 10px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <video id="camera" autoplay></video>
+    <canvas id="canvas" style="display: none;"></canvas>
+    <div class="controls">
+        <button onclick="switchCamera()">Switch Camera</button>
+        <button onclick="capturePhoto()">Take Picture</button>
+        <button onclick="savePhoto()">Save Picture</button>
+        <button onclick="toggleNegative()">Invert Colors</button>
+        <button onclick="toggleFlash()">Flashlight</button>
+        <input type="range" id="zoom" min="1" max="3" step="0.1" value="1" onchange="zoomCamera(this.value)">
+    </div>
+    <script>
+        let video = document.getElementById("camera");
+        let canvas = document.getElementById("canvas");
+        let ctx = canvas.getContext("2d");
+        let stream;
+        let usingFrontCamera = true;
+        
+        async function startCamera(facingMode) {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+            }
+            stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode } });
+            video.srcObject = stream;
+        }
+        
+        function switchCamera() {
+            usingFrontCamera = !usingFrontCamera;
+            startCamera(usingFrontCamera ? "user" : "environment");
+        }
+        
+        function capturePhoto() {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            ctx.drawImage(video, 0, 0);
+            canvas.style.display = "block";
+        }
+        
+        function savePhoto() {
+            let link = document.createElement("a");
+            link.href = canvas.toDataURL("image/png");
+            link.download = "photo.png";
+            link.click();
+        }
+        
+        function toggleNegative() {
+            ctx.filter = ctx.filter === "invert(100%)" ? "none" : "invert(100%)";
+            capturePhoto();
+        }
+        
+        function zoomCamera(value) {
+            video.style.transform = `scale(${value})`;
+        }
+        
+        function toggleFlash() {
+            let track = stream.getVideoTracks()[0];
+            let capabilities = track.getCapabilities();
+            if (capabilities.torch) {
+                let settings = track.getSettings();
+                track.applyConstraints({ advanced: [{ torch: !settings.torch }] });
+            } else {
+                alert("Flash not supported");
+            }
+        }
+        
+        startCamera("user");
+    </script>
+</body>
+</html>
